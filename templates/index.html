@@ -1,0 +1,645 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horse Prediction</title>
+    <style>
+        .hidden {
+            display: none;
+        }
+
+        /* .modal .modal-dialog {
+    width: 800px;
+    margin: 30px auto;
+} */
+    </style>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1>Horse Prediction</h1>
+        <form action="/submit" method="post">
+            <div class="form-group">
+                <label for="name">Select Race date</label>
+                <input type="date" class="form-control" id="name" name="name" onchange="getvenue()">
+            </div>
+            <div class="form-group">
+                <label for="venue">Select Venue</label>
+                <select name="venue" id="venue1" class="form-control" onchange="getrace(event)">
+                    <option selected disabled>Select venue</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="date">Select Race</label>
+                <select name="race" id="race" class="form-control" onchange="getpredictvenue()">
+                    <option selected disabled>Select Race</option>
+
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="venue">Select Predict Venue</label>
+                <select name="pred_venue" id="venues" class="form-control" onchange="cleartable()">
+                    <option selected disabled>Select venue</option>
+                </select>
+            </div>
+            <table>
+                <tr>
+                    <td><button type="button" class="btn btn-primary" id="horse" onclick="showTable2('horse')">Horse
+                        Performance</button></td>
+                    <td><button type="button" class="btn btn-primary" id="jockey" onclick="showTable('jockey')">Jockey
+                        Performance</button></td>
+                    <td><button type="button" class="btn btn-primary" id="trainer"
+                            onclick="showTable1('trainer')">Trainer Performance</button></td>
+                    <td><button type="button" class="btn btn-primary" id="jockeyHorse"
+                            onclick="showTable3('jockeyHorse')">Sire Performance</button></td>
+                    <td><button type="button" class="btn btn-primary" id="jockeyHorseTrainer"
+                            onclick="showTable4('jockeyHorseTrainer')">Dam Performance</button>
+                    </td>
+                    <td><button type="button" class="btn btn-primary" id="jockeyHorseTrainer"
+                            onclick="showTable5('all')">Total Performance</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+        <div>
+            <table id="jockeyTable" class="table table-striped" style="padding-top:20px;">
+                <h1 class="text-center" style="padding-top:20px;" id="element"></h1>
+                <thead>
+                    <tr>
+                        <th scope="col">Horse No</th>
+                        <th scope="col">Horse Name</th>
+                        <th scope="col">Jockey Name</th>
+                        <th scope="col">Trainer Name</th>
+                        <th scope="col">Total Race Participated</th>
+                        <th scope="col">First Place Probability</th>
+                        <th scope="col">Second Place Probability</th>
+                        <th scope="col">Third Place Probability</th>
+                        <th scope="col">View Pie Chart</th>
+                    </tr>
+                </thead>
+                <tbody id="mytable">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="modal fade" id="staticBackdrop" data-backdrop="static" data-keyboard="false" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <!-- <div class="modal-header">
+                  <h5 class="modal-title" id="staticBackdropLabel">Modal title</h5>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div> -->
+                <div class="modal-body">
+                    <div id="myChart" style="max-width:700px; height:400px"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <!-- <button type="button" class="btn btn-primary">Understood</button> -->
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script>
+        var select = document.getElementById("venue1");
+        var select1 = document.getElementById("race");
+        var select2 = document.getElementById("venues");
+        document.getElementById("jockeyTable").style.display = "none"
+        function getvenue() {
+            while (select.options.length > 0) {
+                select.remove(0);
+            }
+            while (select1.options.length > 0) {
+                select1.remove(0);
+            }
+            while (select2.options.length > 0) {
+                select2.remove(0);
+            }
+            var option = document.createElement("option");
+            option.text = 'Select Venue';
+            select.appendChild(option);
+            var option1 = document.createElement("option");
+            option1.text = 'Select Race';
+            select1.appendChild(option1);
+            var option2 = document.createElement("option");
+            option2.text = 'Select Venue';
+            select2.appendChild(option2);
+            var selectedDate = document.getElementById('name').value;
+            var xhr = new XMLHttpRequest();
+            var url = '/get_date?date=' + encodeURIComponent(selectedDate);
+            // var option = document.createElement("option");
+            // // option.text ='';
+            // select.appendChild('');
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    var response = JSON.parse(this.responseText);
+                    // Update the venue dropdown with the response data
+                    document.getElementsByName('venue1').innerHTML = "hello";
+                    console.log(response.venues)
+                    for (let i = 0; i < response.venues.length; i++) {
+                        var option = document.createElement("option");
+                        option.text = response.venues[i];
+                        select.appendChild(option);
+                    }
+                }
+            };
+            xhr.send();
+            var ele = document.getElementById('element')
+            ele.innerHTML = ""
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+            document.getElementById("jockeyTable").style.display = "none"
+        }
+        function getrace(e) {
+            while (select1.options.length > 0) {
+                select1.remove(0);
+            }
+            while (select2.options.length > 0) {
+                select2.remove(0);
+            }
+            var option1 = document.createElement("option");
+            option1.text = 'Select Race';
+            select1.appendChild(option1);
+            var option2 = document.createElement("option");
+            option2.text = 'Select Venue';
+            select2.appendChild(option2);
+            var selectedDate = document.getElementById('name').value;
+            var xhr = new XMLHttpRequest();
+            var url = '/get_race?venue=' + encodeURIComponent(e.target.value) + '&date=' + encodeURIComponent(selectedDate);
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    var response = JSON.parse(this.responseText);
+                    for (let i = 0; i < response.races.length; i++) {
+                        var option = document.createElement("option");
+                        option.text = response.races[i];
+                        select1.appendChild(option);
+                    }
+                }
+            };
+            xhr.send();
+            document.getElementById("jockeyTable").style.display = "none"
+            var ele = document.getElementById('element')
+            ele.innerHTML = ""
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+        }
+        function getpredictvenue() {
+            while (select2.options.length > 0) {
+                select2.remove(0);
+            }
+            var option2 = document.createElement("option");
+            option2.text = 'Select Venue';
+            select2.appendChild(option2);
+            var xhr = new XMLHttpRequest();
+            var url = '/getpredictvenue?venue=' + encodeURIComponent('');
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    var response = JSON.parse(this.responseText);
+                    response.predictedvenuess.unshift('All')
+                    for (let i = 0; i < response.predictedvenuess.length; i++) {
+                        var option = document.createElement("option");
+                        option.text = response.predictedvenuess[i];
+                        select2.appendChild(option);
+                    }
+                }
+            };
+            xhr.send();
+            document.getElementById("jockeyTable").style.display = "none"
+            var ele = document.getElementById('element')
+            ele.innerHTML = ""
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+        }
+        function cleartable() {
+            document.getElementById("jockeyTable").style.display = "none"
+            var ele = document.getElementById('element')
+            ele.innerHTML = ""
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+        }
+        function showTable(tableId) {
+            var ele = document.getElementById('element')
+            var selectedDate = document.getElementById('name').value;
+            var selected_venue = document.getElementById('venue1').value;
+            var selected_Race = document.getElementById('race').value;
+            var selectedpredict_venue = document.getElementById('venues').value
+            var xhr = new XMLHttpRequest();
+            var result;
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+            var url = '/getpre?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+                + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    document.getElementById("jockeyTable").style.display = "block"
+                    var response = JSON.parse(this.responseText);
+                    for (let i = 0; i < response.predictedvenuess.length; i++) {
+                        ele.innerHTML = "Jockey Performance"
+                        var row = `<tr>
+                            <td>${response.predictedvenuess[i].Horse_No}</td>
+                            <td>${response.predictedvenuess[i].Horse_Name}</td>
+                            <td>${response.predictedvenuess[i].Jockey_Name}</td>
+                            <td>${response.predictedvenuess[i].Trainer_Name}</td>
+                            <td>${response.predictedvenuess[i].Total_Race_Participated}</td>
+                            <td>${response.predictedvenuess[i].First_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Second_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Third_Place_Percentage}</td>
+                            <td> <button class="btn btn-primary" data-toggle="modal" data-target="#staticBackdrop" onclick="showpiechart('${response.predictedvenuess[i].Jockey_Name}','${response.predictedvenuess[i].Total_Race_Participated}','${response.predictedvenuess[i].First_Place_Percentage}','${response.predictedvenuess[i].Second_Place_Percentage}','${response.predictedvenuess[i].Third_Place_Percentage}',
+                                '${response.predictedvenuess[i].Fourth_Place_Percentage}','${response.predictedvenuess[i].Fifth_Place_Percentage}','${response.predictedvenuess[i].Sixth_Place_Percentage}','${response.predictedvenuess[i].Above_Sixth_Place_Percentage}')">View</button></td>
+
+
+                            </tr>`
+                        tableid.innerHTML += row
+                    }
+                }
+            };
+            xhr.send();
+        }
+        function showTable1(trainer) {
+            var ele = document.getElementById('element')
+            ele.innerHTML = "Trainer Performance"
+            var selectedDate = document.getElementById('name').value;
+            var selected_venue = document.getElementById('venue1').value;
+            var selected_Race = document.getElementById('race').value;
+            var selectedpredict_venue = document.getElementById('venues').value
+            var xhr = new XMLHttpRequest();
+            var result;
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+            var url = '/gettrainer?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+                + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    document.getElementById("jockeyTable").style.display = "block"
+                    var response = JSON.parse(this.responseText);
+                    for (let i = 0; i < response.predictedvenuess.length; i++) {
+                        var row = `<tr>
+                            <td>${response.predictedvenuess[i].Horse_No}</td>
+                            <td>${response.predictedvenuess[i].Horse_Name}</td>
+                            <td>${response.predictedvenuess[i].Jockey_Name}</td>
+                            <td>${response.predictedvenuess[i].Trainer_Name}</td>
+                            <td>${response.predictedvenuess[i].Total_Race_Participated}</td>
+                            <td>${response.predictedvenuess[i].First_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Second_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Third_Place_Percentage}</td>
+                            <td> <button class="btn btn-primary" data-toggle="modal" data-target="#staticBackdrop" onclick="showpiechart('${response.predictedvenuess[i].Jockey_Name}','${response.predictedvenuess[i].Total_Race_Participated}','${response.predictedvenuess[i].First_Place_Percentage}','${response.predictedvenuess[i].Second_Place_Percentage}','${response.predictedvenuess[i].Third_Place_Percentage}',
+                                '${response.predictedvenuess[i].Fourth_Place_Percentage}','${response.predictedvenuess[i].Fifth_Place_Percentage}','${response.predictedvenuess[i].Sixth_Place_Percentage}','${response.predictedvenuess[i].Above_Sixth_Place_Percentage}')">View</button></td>
+
+
+                            </tr>`
+                        tableid.innerHTML += row
+                    }
+                }
+            };
+            xhr.send();
+        }
+        function showTable2(trainer) {
+            var ele = document.getElementById('element')
+            ele.innerHTML = "Horse Performance"
+            var selectedDate = document.getElementById('name').value;
+            var selected_venue = document.getElementById('venue1').value;
+            var selected_Race = document.getElementById('race').value;
+            var selectedpredict_venue = document.getElementById('venues').value
+            var xhr = new XMLHttpRequest();
+            var result;
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+            var url = '/gethorse?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+                + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    document.getElementById("jockeyTable").style.display = "block"
+                    var response = JSON.parse(this.responseText);
+                    for (let i = 0; i < response.predictedvenuess.length; i++) {
+                        var row = `<tr>
+                            <td>${response.predictedvenuess[i].Horse_No}</td>
+                            <td>${response.predictedvenuess[i].Horse_Name}</td>
+                            <td>${response.predictedvenuess[i].Jockey_Name}</td>
+                            <td>${response.predictedvenuess[i].Trainer_Name}</td>
+                            <td>${response.predictedvenuess[i].Total_Race_Participated}</td>
+                            <td>${response.predictedvenuess[i].First_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Second_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Third_Place_Percentage}</td>
+                            <td> <button class="btn btn-primary" data-toggle="modal" data-target="#staticBackdrop" onclick="showpiechart('${response.predictedvenuess[i].Jockey_Name}','${response.predictedvenuess[i].Total_Race_Participated}','${response.predictedvenuess[i].First_Place_Percentage}','${response.predictedvenuess[i].Second_Place_Percentage}','${response.predictedvenuess[i].Third_Place_Percentage}',
+                                '${response.predictedvenuess[i].Fourth_Place_Percentage}','${response.predictedvenuess[i].Fifth_Place_Percentage}','${response.predictedvenuess[i].Sixth_Place_Percentage}','${response.predictedvenuess[i].Above_Sixth_Place_Percentage}')">View</button></td>
+
+
+                            </tr>`
+                        tableid.innerHTML += row
+                    }
+                }
+            };
+            xhr.send();
+        }
+        function showTable3(trainer) {
+            var ele = document.getElementById('element')
+            ele.innerHTML = "Sire Performance"
+            var selectedDate = document.getElementById('name').value;
+            var selected_venue = document.getElementById('venue1').value;
+            var selected_Race = document.getElementById('race').value;
+            var selectedpredict_venue = document.getElementById('venues').value
+            var xhr = new XMLHttpRequest();
+            var result;
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+            var url = '/getsire?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+                + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    document.getElementById("jockeyTable").style.display = "block"
+                    var response = JSON.parse(this.responseText);
+                    for (let i = 0; i < response.predictedvenuess.length; i++) {
+                        var row = `<tr>
+                            <td>${response.predictedvenuess[i].Horse_No}</td>
+                            <td><div class="ms-3">
+                             <p class="fw-bold mb-1">${response.predictedvenuess[i].Horse_Name}</p>
+                             <p class="text-muted mb-0">${response.predictedvenuess[i].Sire_Name}</p>
+                             </div></td>
+                            <td>${response.predictedvenuess[i].Jockey_Name}</td>
+                            <td>${response.predictedvenuess[i].Trainer_Name}</td>
+                            <td>${response.predictedvenuess[i].Total_Race_Participated}</td>
+                            <td>${response.predictedvenuess[i].First_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Second_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Third_Place_Percentage}</td>
+                            <td> <button class="btn btn-primary" data-toggle="modal" data-target="#staticBackdrop" onclick="showpiechart('${response.predictedvenuess[i].Jockey_Name}','${response.predictedvenuess[i].Total_Race_Participated}','${response.predictedvenuess[i].First_Place_Percentage}','${response.predictedvenuess[i].Second_Place_Percentage}','${response.predictedvenuess[i].Third_Place_Percentage}',
+                                '${response.predictedvenuess[i].Fourth_Place_Percentage}','${response.predictedvenuess[i].Fifth_Place_Percentage}','${response.predictedvenuess[i].Sixth_Place_Percentage}','${response.predictedvenuess[i].Above_Sixth_Place_Percentage}')">View</button></td>
+
+
+                            </tr>`
+                        tableid.innerHTML += row
+                    }
+                }
+            };
+            xhr.send();
+        }
+        function showTable4(trainer) {
+            var ele = document.getElementById('element')
+            ele.innerHTML = "Dam Performance"
+            var selectedDate = document.getElementById('name').value;
+            var selected_venue = document.getElementById('venue1').value;
+            var selected_Race = document.getElementById('race').value;
+            var selectedpredict_venue = document.getElementById('venues').value
+            var xhr = new XMLHttpRequest();
+            var result;
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+            var url = '/getdam?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+                + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+
+            xhr.open('GET', url, true);
+
+            xhr.onload = function () {
+                if (this.status == 200) {
+                    document.getElementById("jockeyTable").style.display = "block"
+                    var response = JSON.parse(this.responseText);
+                    for (let i = 0; i < response.predictedvenuess.length; i++) {
+                        var row = `<tr>
+                            <td>${response.predictedvenuess[i].Horse_No}</td>
+                            <td><div class="ms-3">
+                             <p class="fw-bold mb-1">${response.predictedvenuess[i].Horse_Name}</p>
+                             <p class="text-muted mb-0">${response.predictedvenuess[i].Dam_Name}</p>
+                             </div></td>
+                            <td>${response.predictedvenuess[i].Jockey_Name}</td>
+                            <td>${response.predictedvenuess[i].Trainer_Name}</td>
+                            <td>${response.predictedvenuess[i].Total_Race_Participated}</td>
+                            <td>${response.predictedvenuess[i].First_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Second_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Third_Place_Percentage}</td>
+                            <td> <button class="btn btn-primary" data-toggle="modal" data-target="#staticBackdrop" onclick="showpiechart('${response.predictedvenuess[i].Jockey_Name}','${response.predictedvenuess[i].Total_Race_Participated}','${response.predictedvenuess[i].First_Place_Percentage}','${response.predictedvenuess[i].Second_Place_Percentage}','${response.predictedvenuess[i].Third_Place_Percentage}',
+                                '${response.predictedvenuess[i].Fourth_Place_Percentage}','${response.predictedvenuess[i].Fifth_Place_Percentage}','${response.predictedvenuess[i].Sixth_Place_Percentage}','${response.predictedvenuess[i].Above_Sixth_Place_Percentage}')">View</button></td>
+
+
+                            </tr>`
+                        tableid.innerHTML += row
+                    }
+                }
+            };
+            xhr.send();
+        }
+        function showpiechart(a1, a2, a3, a4, a5, a6, a7, a8, a9) {
+            var a = a1
+            $('#staticBackdrop').modal('show');
+            google.charts.load('current', { 'packages': ['corechart'] });
+            console.log(a3)
+            google.charts.setOnLoadCallback(function () {
+                drawChart(a3, a4, a5, a6, a7, a8, a9)
+            });
+        }
+        function drawChart(a3, a4, a5, a6, a7, a8, a9) {
+            // Set Data
+            const data = google.visualization.arrayToDataTable([
+                ['Contry', 'Mhl'],
+                ['First_Place_Probability', Number(a3)],
+                ['Second_Place_Probability', Number(a4)],
+                ['Third_Place_Probability', Number(a5)],
+                ['Fourth_Place_Probability', Number(a6)],
+                ['Fifth_Place_Probability', Number(a7)],
+                ['Sixth_Place_Probability', Number(a8)],
+                ['Above_Sixth_Place_Probability', Number(a9)]
+            ]);
+
+            // Set Options
+            var options = {
+                // title: 'Pie Chart',
+                'width': 700,
+                'height': 400,// Set the height of the chart
+                'is3D': true,
+                chartArea: {
+                    left: "3%",
+                    top: "7%",
+                    height: "94%",
+                    width: "94%"
+                }
+            };
+
+            // Draw
+            const chart = new google.visualization.PieChart(document.getElementById('myChart'));
+            chart.draw(data, options);
+            var chartTitle = document.querySelector('#chart_div text[text-anchor="middle"]');
+            if (chartTitle) {
+                chartTitle.setAttribute('x', '350'); // Adjust based on chart width
+            }
+        }
+        function showTable5(data) {
+            var selectedDate = document.getElementById('name').value;
+            var selected_venue = document.getElementById('venue1').value;
+            var selected_Race = document.getElementById('race').value;
+            var selectedpredict_venue = document.getElementById('venues').value
+            // var xhr = new XMLHttpRequest();
+            // var url = '/getpre?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+            //     + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+
+            // xhr.open('GET', url, true);
+            // xhr.onload = function () {
+            //     if (this.status == 200) {
+            //         var response = JSON.parse(this.responseText);
+            //         var xhr1 = new XMLHttpRequest();
+            //         var url1 = '/gettrainer?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+            //             + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+
+            //         xhr1.open('GET', url1, true);
+            //         xhr1.onload = function () {
+            //             if (this.status == 200) {
+            //                 var response1 = JSON.parse(this.responseText);
+            //                 var xhr2 = new XMLHttpRequest();
+            //                 var url2 = '/gethorse?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+            //                     + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+            //                 xhr2.open('GET', url2, true);
+            //                 xhr2.onload = function () {
+            //                     if (this.status == 200) {
+            //                         var response2 = JSON.parse(this.responseText);
+            //                         var xhr3 = new XMLHttpRequest();
+            //                         var url3 = '/getsire?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+            //                             + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+            //                         xhr3.open('GET', url3, true);
+            //                         xhr3.onload = function () {
+            //                             if (this.status == 200) {
+            //                                 var response3 = JSON.parse(this.responseText);
+            //                                 var xhr4 = new XMLHttpRequest();
+            //                                 var url4 = '/getdam?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+            //                                     + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+            //                                 xhr4.open('GET', url4, true);
+            //                                 xhr4.onload = function () {
+            //                                     if (this.status == 200) {
+            //                                         var response4 = JSON.parse(this.responseText);
+            //                                         var tot = []
+
+            //                                         for (let l = 0; l < response['predictedvenuess'].length; l++) {
+            //                                             tot[l] = {};
+            //                                             tot[l]['Horse_No'] = response['predictedvenuess'][l]['Horse_No']
+            //                                             tot[l]['Jockey_Name'] = response['predictedvenuess'][l]['Jockey_Name']
+            //                                             tot[l]['Trainer_Name'] = response['predictedvenuess'][l]['Trainer_Name']
+            //                                             tot[l]['Horse_Name'] = response['predictedvenuess'][l]['Horse_Name']
+            //                                             tot[l]['First_Place_Percentage'] = (parseFloat(response['predictedvenuess'][l]['First_Place_Percentage']) + parseFloat(response1['predictedvenuess'][l]['First_Place_Percentage'])
+            //                                                 + parseFloat(response2['predictedvenuess'][l]['First_Place_Percentage']) + parseFloat(response3['predictedvenuess'][l]['First_Place_Percentage']) + parseFloat(response4['predictedvenuess'][l]['First_Place_Percentage'])).toFixed(2)
+
+            //                                             tot[l]['Second_Place_Percentage'] = (parseFloat(response['predictedvenuess'][l]['Second_Place_Percentage']) + parseFloat(response1['predictedvenuess'][l]['Second_Place_Percentage'])
+            //                                                 + parseFloat(response2['predictedvenuess'][l]['Second_Place_Percentage']) + parseFloat(response3['predictedvenuess'][l]['Second_Place_Percentage']) + parseFloat(response4['predictedvenuess'][l]['Second_Place_Percentage'])).toFixed(2)
+
+            //                                             tot[l]['Third_Place_Percentage'] = (parseFloat(response['predictedvenuess'][l]['Third_Place_Percentage']) + parseFloat(response1['predictedvenuess'][l]['Third_Place_Percentage'])
+            //                                                 + parseFloat(response2['predictedvenuess'][l]['Third_Place_Percentage']) + parseFloat(response3['predictedvenuess'][l]['Third_Place_Percentage']) + parseFloat(response4['predictedvenuess'][l]['Third_Place_Percentage'])).toFixed(2)
+
+            //                                             tot[l]['Fourth_Place_Percentage'] = (parseFloat(response['predictedvenuess'][l]['Fourth_Place_Percentage']) + parseFloat(response1['predictedvenuess'][l]['Fourth_Place_Percentage'])
+            //                                                 + parseFloat(response2['predictedvenuess'][l]['Fourth_Place_Percentage']) + parseFloat(response3['predictedvenuess'][l]['Fourth_Place_Percentage']) + parseFloat(response4['predictedvenuess'][l]['Fourth_Place_Percentage'])).toFixed(2)
+
+            //                                             tot[l]['Fifth_Place_Percentage'] = (parseFloat(response['predictedvenuess'][l]['Fifth_Place_Percentage']) + parseFloat(response1['predictedvenuess'][l]['Fifth_Place_Percentage'])
+            //                                                 + parseFloat(response2['predictedvenuess'][l]['Fifth_Place_Percentage']) + parseFloat(response3['predictedvenuess'][l]['Fifth_Place_Percentage']) + parseFloat(response4['predictedvenuess'][l]['Fifth_Place_Percentage'])).toFixed(2)
+
+            //                                             tot[l]['Sixth_Place_Percentage'] = (parseFloat(response['predictedvenuess'][l]['Sixth_Place_Percentage']) + parseFloat(response1['predictedvenuess'][l]['Sixth_Place_Percentage'])
+            //                                                 + parseFloat(response2['predictedvenuess'][l]['Sixth_Place_Percentage']) + parseFloat(response3['predictedvenuess'][l]['Sixth_Place_Percentage']) + parseFloat(response4['predictedvenuess'][l]['Sixth_Place_Percentage'])).toFixed(2)
+
+            //                                             tot[l]['Above_Sixth_Place_Percentage'] = (parseFloat(response['predictedvenuess'][l]['Above_Sixth_Place_Percentage']) + parseFloat(response1['predictedvenuess'][l]['Above_Sixth_Place_Percentage'])
+            //                                                 + parseFloat(response2['predictedvenuess'][l]['Above_Sixth_Place_Percentage']) + parseFloat(response3['predictedvenuess'][l]['Above_Sixth_Place_Percentage']) + parseFloat(response4['predictedvenuess'][l]['Above_Sixth_Place_Percentage'])).toFixed(2)
+
+
+
+            //                                         }
+            //                                         var tableid = document.getElementById('mytable')
+            //                                         tableid.innerHTML = ''
+            //                                         var ele = document.getElementById('element')
+            //                                         ele.innerHTML = "Total Percentage Table"
+            //                                         document.getElementById("jockeyTable").style.display = "block"
+            //                                         for (let i = 0; i < tot.length; i++) {
+            //                                             var row = `<tr>
+            //                                          <td>${tot[i].Horse_No}</td>
+            //                                          <td>${tot[i].Horse_Name}</td>
+            //                                          <td>${tot[i].Jockey_Name}</td>
+            //                                          <td>${tot[i].Trainer_Name}</td>
+            //                                          <td>0</td>
+            //                                          <td>${tot[i].First_Place_Percentage}</td>
+            //                                          <td>${tot[i].Second_Place_Percentage}</td>
+            //                                          <td>${tot[i].Third_Place_Percentage}</td>
+            //                                          <td> <button class="btn btn-primary" data-toggle="modal" data-target="#staticBackdrop" onclick="showpiechart('${tot[i].Jockey_Name}','${tot[i].Total_Race_Participated}','${tot[i].First_Place_Percentage}','${tot[i].Second_Place_Percentage}','${tot[i].Third_Place_Percentage}',
+            //                                              '${tot[i].Fourth_Place_Percentage}','${tot[i].Fifth_Place_Percentage}','${tot[i].Sixth_Place_Percentage}','${tot[i].Above_Sixth_Place_Percentage}')">View</button></td>
+
+
+            //                                          </tr>`
+            //                                             tableid.innerHTML += row
+            //                                         }
+            //                                     }
+            //                                 }
+            //                                 xhr4.send();
+            //                             }
+            //                         }
+            //                         xhr3.send();
+            //                     }
+            //                 }
+            //                 xhr2.send();
+            //             }
+            //         };
+            //         xhr1.send();
+
+            //     }
+            // };
+            // xhr.send();
+            var ele = document.getElementById('element')
+            ele.innerHTML = "Total Performance"
+            var tableid = document.getElementById('mytable')
+            tableid.innerHTML = ''
+            var xhr6 = new XMLHttpRequest();
+            var url6 = '/gettotalpercentage?formatted_date=' + encodeURIComponent(selectedDate) + '&selected_venue=' + encodeURIComponent(selected_venue) + '&selected_Race=' + encodeURIComponent(selected_Race)
+                + '&selectedpredict_venue=' + encodeURIComponent(selectedpredict_venue);
+            xhr6.open('GET', url6, true);
+            xhr6.onload = function () {
+                if (this.status == 200) {
+                    document.getElementById("jockeyTable").style.display = "block"
+                    var response = JSON.parse(this.responseText);
+                    console.log(response)
+                    for (let i = 0; i < response.predictedvenuess.length; i++) {
+                        var row = `<tr>
+                            <td>${response.predictedvenuess[i].Horse_No}</td>
+                            <td>${response.predictedvenuess[i].Horse_Name}</td>
+                            <td>${response.predictedvenuess[i].Jockey_Name}</td>
+                            <td>${response.predictedvenuess[i].Trainer_Name}</td>
+                            <td>0</td>
+                            <td>${response.predictedvenuess[i].First_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Second_Place_Percentage}</td>
+                            <td>${response.predictedvenuess[i].Third_Place_Percentage}</td>
+                            <td> <button class="btn btn-primary" data-toggle="modal" data-target="#staticBackdrop" onclick="showpiechart('${response.predictedvenuess[i].Jockey_Name}','${response.predictedvenuess[i].Total_Race_Participated}','${response.predictedvenuess[i].First_Place_Percentage}','${response.predictedvenuess[i].Second_Place_Percentage}','${response.predictedvenuess[i].Third_Place_Percentage}',
+                                '${response.predictedvenuess[i].Fourth_Place_Percentage}','${response.predictedvenuess[i].Fifth_Place_Percentage}','${response.predictedvenuess[i].Sixth_Place_Percentage}','${response.predictedvenuess[i].Above_Sixth_Place_Percentage}')">View</button></td>
+
+
+                            </tr>`
+                        tableid.innerHTML += row
+                    }
+                }
+            }
+            xhr6.send()
+        }
+
+    </script>
+</body>
+
+</html>
